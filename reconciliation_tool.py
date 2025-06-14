@@ -97,89 +97,128 @@ def merge_frames(bank_df: pd.DataFrame, disb_df: pd.DataFrame):
 
 
 class ReconciliationApp:
-    """Simple Tkinter UI for running the reconciliation."""
+    """Tkinter-based interface for running the reconciliation."""
 
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("Reconciliation Tool")
-        self.root.geometry("700x500")
+        self.root.title("Bank vs Disbursement Reconciliation Tool")
+        self.root.geometry("700x400")
         self.root.resizable(False, False)
 
-        # Paths selected by the user
+        # File path variables
         self.bank_path = tk.StringVar()
         self.disb_path = tk.StringVar()
 
-        # Configure logger
+        # Logger setup
         self.logger = logging.getLogger("ReconciliationApp")
         self.logger.setLevel(logging.INFO)
         for h in self.logger.handlers[:]:
             self.logger.removeHandler(h)
         stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        stream_handler.setFormatter(
+            logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        )
         self.logger.addHandler(stream_handler)
 
-        self._create_widgets()
+        self.create_widgets()
 
-    def _create_widgets(self) -> None:
-        """Create and place all UI widgets."""
+    def create_widgets(self) -> None:
         opts = {'padx': 10, 'pady': 10}
 
         instructions = (
-            "Browse for your Bank Statement and Disbursement Report then click 'Reconcile Now'."
+            "Select your Bank Statement and Disbursement Report below, then click 'Reconcile Now'.\n"
+            "Both files must be Excel (.xlsx or .xls) and contain the required columns as per your data spec."
         )
-        ttk.Label(self.root, text=instructions, wraplength=680, justify="left").grid(row=0, column=0, columnspan=3, sticky='w', **opts)
+        ttk.Label(
+            self.root,
+            text=instructions,
+            wraplength=680,
+            justify="left",
+        ).grid(row=0, column=0, columnspan=3, sticky='w', **opts)
 
-        ttk.Label(self.root, text="1. Bank Statement:").grid(row=1, column=0, sticky='e', **opts)
-        ttk.Entry(self.root, textvariable=self.bank_path, width=60, state='readonly').grid(row=1, column=1, sticky='w', **opts)
-        ttk.Button(self.root, text="Browse...", command=self._browse_bank).grid(row=1, column=2, sticky='w', **opts)
+        ttk.Label(self.root, text="1. Select Bank Statement:").grid(
+            row=1, column=0, sticky='e', **opts
+        )
+        ttk.Entry(
+            self.root, textvariable=self.bank_path, width=60, state='readonly'
+        ).grid(row=1, column=1, sticky='w', **opts)
+        ttk.Button(
+            self.root, text="Browse...", command=self.browse_bank
+        ).grid(row=1, column=2, sticky='w', **opts)
 
-        ttk.Label(self.root, text="2. Disbursement Report:").grid(row=2, column=0, sticky='e', **opts)
-        ttk.Entry(self.root, textvariable=self.disb_path, width=60, state='readonly').grid(row=2, column=1, sticky='w', **opts)
-        ttk.Button(self.root, text="Browse...", command=self._browse_disb).grid(row=2, column=2, sticky='w', **opts)
-        
-        self.run_btn = ttk.Button(self.root, text="Reconcile Now", command=self._run, state='disabled')
-        self.run_btn.grid(row=3, column=1, pady=20)
+        ttk.Label(self.root, text="2. Select Disbursement Report:").grid(
+            row=2, column=0, sticky='e', **opts
+        )
+        ttk.Entry(
+            self.root, textvariable=self.disb_path, width=60, state='readonly'
+        ).grid(row=2, column=1, sticky='w', **opts)
+        ttk.Button(
+            self.root, text="Browse...", command=self.browse_disb
+        ).grid(row=2, column=2, sticky='w', **opts)
+
+        self.reconcile_button = ttk.Button(
+            self.root,
+            text="Reconcile Now",
+            command=self.run_reconciliation,
+            state='disabled',
+        )
+        self.reconcile_button.grid(row=4, column=1, pady=25)
 
         self.status_var = tk.StringVar()
-        ttk.Label(self.root, textvariable=self.status_var, foreground="blue", wraplength=680, justify="left").grid(row=5, column=0, columnspan=3, sticky='w', **opts)
+        ttk.Label(
+            self.root,
+            textvariable=self.status_var,
+            foreground="blue",
+            wraplength=680,
+            justify="left",
+        ).grid(row=6, column=0, columnspan=3, sticky='w', **opts)
 
-        # Enable button when all paths set
-        self.bank_path.trace_add('write', self._check_ready)
-        self.disb_path.trace_add('write', self._check_ready)
+        # Enable reconcile button only when both paths are provided
+        self.bank_path.trace_add('write', self.check_ready)
+        self.disb_path.trace_add('write', self.check_ready)
 
-    def _browse_bank(self) -> None:
-        path = filedialog.askopenfilename(title="Select Bank Statement", filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")])
+    def browse_bank(self) -> None:
+        path = filedialog.askopenfilename(
+            title="Select Bank Statement",
+            filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")],
+        )
         if path:
             self.bank_path.set(path)
 
-    def _browse_disb(self) -> None:
-        path = filedialog.askopenfilename(title="Select Disbursement Report", filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")])
+    def browse_disb(self) -> None:
+        path = filedialog.askopenfilename(
+            title="Select Disbursement Report",
+            filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")],
+        )
         if path:
             self.disb_path.set(path)
 
-    def _check_ready(self, *args) -> None:
+    def check_ready(self, *args) -> None:
         if self.bank_path.get() and self.disb_path.get():
-            self.run_btn.config(state='normal')
+            self.reconcile_button.config(state='normal')
         else:
-            self.run_btn.config(state='disabled')
+            self.reconcile_button.config(state='disabled')
 
-    def _run(self) -> None:
+    def run_reconciliation(self) -> None:
         try:
-            output_bank, output_disb = reconcile(
+            out_bank, out_disb = reconcile(
                 Path(self.bank_path.get()),
                 Path(self.disb_path.get()),
                 Path.cwd(),
             )
-            self.status_var.set('Reconciliation complete.')
+            self.status_var.set("Reconciliation complete. Output saved.")
             messagebox.showinfo(
-                'Success',
-                f'Reconciliation complete.\nFiles saved to:\n{output_bank}\n{output_disb}'
+                "Success",
+                (
+                    "Reconciliation complete.\n\nUnmatched Bank entries saved to:\n"
+                    f"{out_bank}\n\nUnmatched Disbursement entries saved to:\n{out_disb}"
+                ),
             )
             self.root.destroy()
         except Exception as exc:  # pragma: no cover - UI error handling
             self.logger.exception("Error during reconciliation")
-            self.status_var.set(f'Error: {exc}')
-            messagebox.showerror('Error', str(exc))
+            self.status_var.set(f"Error: {exc}")
+            messagebox.showerror("Error", str(exc))
 
 def reconcile(bank_path: Path, disb_path: Path, output_dir: Path) -> tuple[Path, Path]:
     """Process Excel files and write unmatched entries to disk."""
@@ -204,7 +243,8 @@ def main():
     parser.add_argument('--gui', action='store_true', help='Launch graphical interface')
     args = parser.parse_args()
 
-    if args.gui:
+    launch_gui = args.gui or not (args.bank and args.disbursement)
+    if launch_gui:
         root = tk.Tk()
         app = ReconciliationApp(root)
         root.mainloop()
@@ -212,8 +252,12 @@ def main():
         bank = args.bank or select_file("Select the bank statement")
         disb = args.disbursement or select_file("Select the disbursement report")
         out_bank, out_disb = reconcile(bank, disb, args.output)
-        print(f'Reconciliation complete. Files saved to:\n{out_bank}\n{out_disb}')
+        print(
+            f"Reconciliation complete. Files saved to:\n{out_bank}\n{out_disb}"
+        )
 
 
 if __name__ == '__main__':
-    main()
+    root = tk.Tk()
+    app = ReconciliationApp(root)
+    root.mainloop()
