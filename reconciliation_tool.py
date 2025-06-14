@@ -243,7 +243,8 @@ def main():
     parser.add_argument('--gui', action='store_true', help='Launch graphical interface')
     args = parser.parse_args()
 
-    if args.gui:
+    launch_gui = args.gui or not (args.bank and args.disbursement)
+    if launch_gui:
         root = tk.Tk()
         app = ReconciliationApp(root)
         root.mainloop()
@@ -251,7 +252,9 @@ def main():
         bank = args.bank or select_file("Select the bank statement")
         disb = args.disbursement or select_file("Select the disbursement report")
         out_bank, out_disb = reconcile(bank, disb, args.output)
-        print(f'Reconciliation complete. Files saved to:\n{out_bank}\n{out_disb}')
+        print(
+            f"Reconciliation complete. Files saved to:\n{out_bank}\n{out_disb}"
+        )
 
 
 if __name__ == '__main__':

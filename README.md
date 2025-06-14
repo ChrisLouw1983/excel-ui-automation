@@ -11,7 +11,7 @@ pip install -r requirements.txt
 ## Usage
 
 Run the tool from the command line or launch the graphical interface.
-If file paths are not provided in CLI mode, a file selection dialog will appear.
+If no file paths are provided, the GUI opens automatically.
 
 ```bash
 # CLI
