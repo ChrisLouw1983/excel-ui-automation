@@ -22,4 +22,6 @@ python reconciliation_tool.py --bank path/to/bank.xlsx --disbursement path/to/re
 python reconciliation_tool.py --gui
 ```
 
+In the GUI, select your Excel files and click the **Reconcile Now** button to start processing.
+
 
