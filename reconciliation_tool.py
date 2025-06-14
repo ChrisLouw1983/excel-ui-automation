@@ -108,7 +108,6 @@ class ReconciliationApp:
         # Paths selected by the user
         self.bank_path = tk.StringVar()
         self.disb_path = tk.StringVar()
-        self.output_dir = tk.StringVar(value=str(Path.cwd()))
 
         # Configure logger
         self.logger = logging.getLogger("ReconciliationApp")
@@ -126,8 +125,7 @@ class ReconciliationApp:
         opts = {'padx': 10, 'pady': 10}
 
         instructions = (
-            "Please select the required Excel files below and click 'Reconcile Now' to begin.\n"
-            "Ensure that each file contains the necessary columns as specified."
+            "Browse for your Bank Statement and Disbursement Report then click 'Reconcile Now'."
         )
         ttk.Label(self.root, text=instructions, wraplength=680, justify="left").grid(row=0, column=0, columnspan=3, sticky='w', **opts)
 
@@ -138,13 +136,9 @@ class ReconciliationApp:
         ttk.Label(self.root, text="2. Disbursement Report:").grid(row=2, column=0, sticky='e', **opts)
         ttk.Entry(self.root, textvariable=self.disb_path, width=60, state='readonly').grid(row=2, column=1, sticky='w', **opts)
         ttk.Button(self.root, text="Browse...", command=self._browse_disb).grid(row=2, column=2, sticky='w', **opts)
-
-        ttk.Label(self.root, text="3. Output Directory:").grid(row=3, column=0, sticky='e', **opts)
-        ttk.Entry(self.root, textvariable=self.output_dir, width=60, state='readonly').grid(row=3, column=1, sticky='w', **opts)
-        ttk.Button(self.root, text="Browse...", command=self._browse_output).grid(row=3, column=2, sticky='w', **opts)
-
+        
         self.run_btn = ttk.Button(self.root, text="Reconcile Now", command=self._run, state='disabled')
-        self.run_btn.grid(row=4, column=1, pady=20)
+        self.run_btn.grid(row=3, column=1, pady=20)
 
         self.status_var = tk.StringVar()
         ttk.Label(self.root, textvariable=self.status_var, foreground="blue", wraplength=680, justify="left").grid(row=5, column=0, columnspan=3, sticky='w', **opts)
@@ -152,7 +146,6 @@ class ReconciliationApp:
         # Enable button when all paths set
         self.bank_path.trace_add('write', self._check_ready)
         self.disb_path.trace_add('write', self._check_ready)
-        self.output_dir.trace_add('write', self._check_ready)
 
     def _browse_bank(self) -> None:
         path = filedialog.askopenfilename(title="Select Bank Statement", filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")])
@@ -164,36 +157,43 @@ class ReconciliationApp:
         if path:
             self.disb_path.set(path)
 
-    def _browse_output(self) -> None:
-        path = filedialog.askdirectory(title="Select Output Directory")
-        if path:
-            self.output_dir.set(path)
-
     def _check_ready(self, *args) -> None:
-        if self.bank_path.get() and self.disb_path.get() and self.output_dir.get():
+        if self.bank_path.get() and self.disb_path.get():
             self.run_btn.config(state='normal')
         else:
             self.run_btn.config(state='disabled')
 
     def _run(self) -> None:
         try:
-            reconcile(Path(self.bank_path.get()), Path(self.disb_path.get()), Path(self.output_dir.get()))
+            output_bank, output_disb = reconcile(
+                Path(self.bank_path.get()),
+                Path(self.disb_path.get()),
+                Path.cwd(),
+            )
             self.status_var.set('Reconciliation complete.')
-            messagebox.showinfo('Success', 'Reconciliation complete.')
+            messagebox.showinfo(
+                'Success',
+                f'Reconciliation complete.\nFiles saved to:\n{output_bank}\n{output_disb}'
+            )
+            self.root.destroy()
         except Exception as exc:  # pragma: no cover - UI error handling
             self.logger.exception("Error during reconciliation")
             self.status_var.set(f'Error: {exc}')
             messagebox.showerror('Error', str(exc))
 
-def reconcile(bank_path: Path, disb_path: Path, output_dir: Path):
+def reconcile(bank_path: Path, disb_path: Path, output_dir: Path) -> tuple[Path, Path]:
+    """Process Excel files and write unmatched entries to disk."""
     bank_df = process_bank_statement(bank_path)
     disb_df = process_disbursement_report(disb_path)
     matched, unmatched_bank, unmatched_disb = merge_frames(bank_df, disb_df)
     timestamp = datetime.now().strftime('%Y%m%d%H%M')
-    unmatched_bank.to_excel(output_dir / f"Unmatched_Bank_{timestamp}.xlsx", index=False)
-    unmatched_disb.to_excel(output_dir / f"Unmatched_Disbursement_{timestamp}.xlsx", index=False)
+    bank_out = output_dir / f"Unmatched_Bank_{timestamp}.xlsx"
+    disb_out = output_dir / f"Unmatched_Disbursement_{timestamp}.xlsx"
+    unmatched_bank.to_excel(bank_out, index=False)
+    unmatched_disb.to_excel(disb_out, index=False)
     logging.info("Reconciliation complete")
     logging.info("Matched sample:\n%s", matched.head())
+    return bank_out, disb_out
 
 
 def main():
@@ -211,7 +211,8 @@ def main():
     else:
         bank = args.bank or select_file("Select the bank statement")
         disb = args.disbursement or select_file("Select the disbursement report")
-        reconcile(bank, disb, args.output)
+        out_bank, out_disb = reconcile(bank, disb, args.output)
+        print(f'Reconciliation complete. Files saved to:\n{out_bank}\n{out_disb}')
 
 
 if __name__ == '__main__':
