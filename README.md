@@ -18,5 +18,8 @@ If file paths are not provided in CLI mode, a file selection dialog will appear.
 python reconciliation_tool.py --bank path/to/bank.xlsx --disbursement path/to/report.xlsx --output output_directory
 
 # GUI
+ 
 python reconciliation_tool.py --gui
 ```
+
+
