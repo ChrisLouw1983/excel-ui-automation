@@ -10,8 +10,13 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the tool from the command line. If file paths are not provided, a file selection dialog will appear.
+Run the tool from the command line or launch the graphical interface.
+If file paths are not provided in CLI mode, a file selection dialog will appear.
 
 ```bash
+# CLI
 python reconciliation_tool.py --bank path/to/bank.xlsx --disbursement path/to/report.xlsx --output output_directory
+
+# GUI
+python reconciliation_tool.py --gui
 ```

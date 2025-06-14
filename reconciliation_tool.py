@@ -7,6 +7,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
+
 # Logging configuration
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -92,6 +95,93 @@ def merge_frames(bank_df: pd.DataFrame, disb_df: pd.DataFrame):
     unmatched_disb = merged[merged[date_col].isna()]
     return matched, unmatched_bank, unmatched_disb
 
+
+class ReconciliationApp:
+    """Simple Tkinter UI for running the reconciliation."""
+
+    def __init__(self, root: tk.Tk):
+        self.root = root
+        self.root.title("Reconciliation Tool")
+        self.root.geometry("700x300")
+        self.root.resizable(False, False)
+
+        # Paths selected by the user
+        self.bank_path = tk.StringVar()
+        self.disb_path = tk.StringVar()
+        self.output_dir = tk.StringVar(value=str(Path.cwd()))
+
+        # Configure logger
+        self.logger = logging.getLogger("ReconciliationApp")
+        self.logger.setLevel(logging.INFO)
+        for h in self.logger.handlers[:]:
+            self.logger.removeHandler(h)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        self.logger.addHandler(stream_handler)
+
+        self._create_widgets()
+
+    def _create_widgets(self) -> None:
+        """Create and place all UI widgets."""
+        opts = {'padx': 10, 'pady': 10}
+
+        instructions = ("Select the Excel files then click 'Run Reconciliation' to create the output files.")
+        ttk.Label(self.root, text=instructions, wraplength=680, justify="left").grid(row=0, column=0, columnspan=3, sticky='w', **opts)
+
+        ttk.Label(self.root, text="1. Bank Statement:").grid(row=1, column=0, sticky='e', **opts)
+        ttk.Entry(self.root, textvariable=self.bank_path, width=60, state='readonly').grid(row=1, column=1, sticky='w', **opts)
+        ttk.Button(self.root, text="Browse...", command=self._browse_bank).grid(row=1, column=2, sticky='w', **opts)
+
+        ttk.Label(self.root, text="2. Disbursement Report:").grid(row=2, column=0, sticky='e', **opts)
+        ttk.Entry(self.root, textvariable=self.disb_path, width=60, state='readonly').grid(row=2, column=1, sticky='w', **opts)
+        ttk.Button(self.root, text="Browse...", command=self._browse_disb).grid(row=2, column=2, sticky='w', **opts)
+
+        ttk.Label(self.root, text="3. Output Directory:").grid(row=3, column=0, sticky='e', **opts)
+        ttk.Entry(self.root, textvariable=self.output_dir, width=60, state='readonly').grid(row=3, column=1, sticky='w', **opts)
+        ttk.Button(self.root, text="Browse...", command=self._browse_output).grid(row=3, column=2, sticky='w', **opts)
+
+        self.run_btn = ttk.Button(self.root, text="Run Reconciliation", command=self._run, state='disabled')
+        self.run_btn.grid(row=4, column=1, pady=20)
+
+        self.status_var = tk.StringVar()
+        ttk.Label(self.root, textvariable=self.status_var, foreground="blue", wraplength=680, justify="left").grid(row=5, column=0, columnspan=3, sticky='w', **opts)
+
+        # Enable button when all paths set
+        self.bank_path.trace_add('write', self._check_ready)
+        self.disb_path.trace_add('write', self._check_ready)
+        self.output_dir.trace_add('write', self._check_ready)
+
+    def _browse_bank(self) -> None:
+        path = filedialog.askopenfilename(title="Select Bank Statement", filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")])
+        if path:
+            self.bank_path.set(path)
+
+    def _browse_disb(self) -> None:
+        path = filedialog.askopenfilename(title="Select Disbursement Report", filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")])
+        if path:
+            self.disb_path.set(path)
+
+    def _browse_output(self) -> None:
+        path = filedialog.askdirectory(title="Select Output Directory")
+        if path:
+            self.output_dir.set(path)
+
+    def _check_ready(self, *args) -> None:
+        if self.bank_path.get() and self.disb_path.get() and self.output_dir.get():
+            self.run_btn.config(state='normal')
+        else:
+            self.run_btn.config(state='disabled')
+
+    def _run(self) -> None:
+        try:
+            reconcile(Path(self.bank_path.get()), Path(self.disb_path.get()), Path(self.output_dir.get()))
+            self.status_var.set('Reconciliation complete.')
+            messagebox.showinfo('Success', 'Reconciliation complete.')
+        except Exception as exc:  # pragma: no cover - UI error handling
+            self.logger.exception("Error during reconciliation")
+            self.status_var.set(f'Error: {exc}')
+            messagebox.showerror('Error', str(exc))
+
 def reconcile(bank_path: Path, disb_path: Path, output_dir: Path):
     bank_df = process_bank_statement(bank_path)
     disb_df = process_disbursement_report(disb_path)
@@ -108,12 +198,17 @@ def main():
     parser.add_argument('--bank', type=Path, help='Path to bank statement Excel')
     parser.add_argument('--disbursement', type=Path, help='Path to disbursement report Excel')
     parser.add_argument('--output', type=Path, help='Directory for output files', default=Path.cwd())
+    parser.add_argument('--gui', action='store_true', help='Launch graphical interface')
     args = parser.parse_args()
 
-    bank_path = args.bank or select_file("Select the bank statement")
-    disb_path = args.disbursement or select_file("Select the disbursement report")
-
-    reconcile(bank_path, disb_path, args.output)
+    if args.gui:
+        root = tk.Tk()
+        app = ReconciliationApp(root)
+        root.mainloop()
+    else:
+        bank = args.bank or select_file("Select the bank statement")
+        disb = args.disbursement or select_file("Select the disbursement report")
+        reconcile(bank, disb, args.output)
 
 
 if __name__ == '__main__':
