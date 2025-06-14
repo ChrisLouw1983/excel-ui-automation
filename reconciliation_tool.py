@@ -258,4 +258,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    root = tk.Tk()
+    app = ReconciliationApp(root)
+    root.mainloop()
