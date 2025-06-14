@@ -102,7 +102,7 @@ class ReconciliationApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Reconciliation Tool")
-        self.root.geometry("700x300")
+        self.root.geometry("700x500")
         self.root.resizable(False, False)
 
         # Paths selected by the user
@@ -125,7 +125,10 @@ class ReconciliationApp:
         """Create and place all UI widgets."""
         opts = {'padx': 10, 'pady': 10}
 
-        instructions = ("Select the Excel files then click 'Run Reconciliation' to create the output files.")
+        instructions = (
+            "Please select the required Excel files below and click 'Process Data' to begin.\n"
+            "Ensure that each file contains the necessary columns as specified."
+        )
         ttk.Label(self.root, text=instructions, wraplength=680, justify="left").grid(row=0, column=0, columnspan=3, sticky='w', **opts)
 
         ttk.Label(self.root, text="1. Bank Statement:").grid(row=1, column=0, sticky='e', **opts)
@@ -140,7 +143,7 @@ class ReconciliationApp:
         ttk.Entry(self.root, textvariable=self.output_dir, width=60, state='readonly').grid(row=3, column=1, sticky='w', **opts)
         ttk.Button(self.root, text="Browse...", command=self._browse_output).grid(row=3, column=2, sticky='w', **opts)
 
-        self.run_btn = ttk.Button(self.root, text="Run Reconciliation", command=self._run, state='disabled')
+        self.run_btn = ttk.Button(self.root, text="Process Data", command=self._run, state='disabled')
         self.run_btn.grid(row=4, column=1, pady=20)
 
         self.status_var = tk.StringVar()
