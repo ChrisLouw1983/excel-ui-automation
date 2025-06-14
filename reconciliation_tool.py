@@ -136,7 +136,7 @@ class ReconciliationApp:
         ttk.Label(self.root, text="2. Disbursement Report:").grid(row=2, column=0, sticky='e', **opts)
         ttk.Entry(self.root, textvariable=self.disb_path, width=60, state='readonly').grid(row=2, column=1, sticky='w', **opts)
         ttk.Button(self.root, text="Browse...", command=self._browse_disb).grid(row=2, column=2, sticky='w', **opts)
-
+        
         self.run_btn = ttk.Button(self.root, text="Reconcile Now", command=self._run, state='disabled')
         self.run_btn.grid(row=3, column=1, pady=20)
 
